@@ -81,7 +81,7 @@ def generate_summary(file_path, k, stop_words):
     for i in range(k):
       result.append(" ".join(ranked_sentence[i][1]))
 
-    write_textfile("summerized_article.txt", result)
+    write_textfile("summarized_article.txt", result)
 
 def main():
     stop_words = stopwords.words('english')
