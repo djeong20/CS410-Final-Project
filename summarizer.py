@@ -3,92 +3,110 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.cluster.util import cosine_distance
 import networkx as nx
+import argparse
 
-nltk.download("stopwords")
+class ExtractiveSummarizer:
+    def __init__(self, args):
+        self.args = args
 
-def read_textfile(file_path):
-    f = open(file_path, "r")
-    data = f.readlines()
-    text_data = data[0].split(". ")
+        nltk.download("stopwords")
+        self.stop_words = stopwords.words('english')
+        if self.stop_words is None:
+            self.stop_words = []
+        
 
-    article_text = []
+    def read_textfile(self):
+        f = open(self.args.input_file, "r")
+        data = f.readlines()
+        text_data = data[0].split(". ")
 
-    for sentence in text_data:
-        line = sentence.replace("[^a-zA-Z]", " ").split(" ") # text should be english
-        article_text.append(line)
+        article_text = []
+
+        for sentence in text_data:
+            line = sentence.replace("[^a-zA-Z]", " ").split(" ") # text should be english
+            article_text.append(line)
+        
+        article_text.pop() 
+        
+        return article_text
+
+    def write_textfile(self, summarized):
+        f = open(self.args.output_file, "w+")
+
+        for sentence in summarized:
+            f.write(sentence + ".\n")
+        
+        f.close()
+
+    def get_similarity(self, sentence_1, sentence_2):
+        lower_sentence1, lower_sentence2 = [], []
+
+        for word in sentence_1:
+            lower_sentence1.append(word.lower())
+
+        for word in sentence_2:
+            lower_sentence2.append(word.lower())
     
-    article_text.pop() 
+        total_words = list(set(lower_sentence1 + lower_sentence2))
+
+        N = len(total_words)
+        v1, v2 = [0] * N, [0] * N
+        
+        # word2vec
+        for word in lower_sentence1:
+            if word not in self.stop_words:
+                idx = total_words.index(word)
+                v1[idx] += 1
     
-    return article_text
+        for word in lower_sentence2:
+            if word not in self.stop_words:
+                idx = total_words.index(word)
+                v2[idx] += 1
+        
+        similarity = 1 - cosine_distance(v1, v2)
+        
+        return similarity
 
-def write_textfile(file_name, summarized):
-    f = open(file_name, "w+")
 
-    for sentence in summarized:
-        f.write(sentence + ".\n")
+    def generate_summary(self):
+        result = []
+
+        article_text = self.read_textfile()
+
+        N = len(article_text)
+        similarity_matrix = np.zeros((N, N))
     
-    f.close()
+        for i in range(N):
+            for j in range(i+1, N):
+                similarity = self.get_similarity(article_text[i], article_text[j])
 
-def get_similarity(sentence_1, sentence_2, stopwords):
-    lower_sentence1, lower_sentence2 = [], []
+                similarity_matrix[i][j], similarity_matrix[j][i] = similarity, similarity
 
-    for word in sentence_1:
-        lower_sentence1.append(word.lower())
+        # Page rank
+        ranks = nx.pagerank(nx.from_numpy_array(similarity_matrix))
 
-    for word in sentence_2:
-        lower_sentence2.append(word.lower())
- 
-    total_words = list(set(lower_sentence1 + lower_sentence2))
+        ranked_sentence = sorted(((ranks[i], s) for i, s in enumerate(article_text)), reverse=True)
 
-    N = len(total_words)
-    v1, v2 = [0] * N, [0] * N
-    
-    # word2vec
-    for word in lower_sentence1:
-        if word not in stopwords:
-            idx = total_words.index(word)
-            v1[idx] += 1
- 
-    for word in lower_sentence2:
-        if word not in stopwords:
-            idx = total_words.index(word)
-            v2[idx] += 1
-    
-    similarity = 1 - cosine_distance(v1, v2)
-    
-    return similarity
+        for i in range(self.args.k):
+            result.append(" ".join(ranked_sentence[i][1]))
 
-
-def generate_summary(file_path, k, stop_words):
-    result = []
-
-    article_text = read_textfile(file_path)
-
-    N = len(article_text)
-    similarity_matrix = np.zeros((N, N))
- 
-    for i in range(N):
-        for j in range(i+1, N):
-            similarity = get_similarity(article_text[i], article_text[j], stop_words)
-
-            similarity_matrix[i][j], similarity_matrix[j][i] = similarity, similarity
-
-    # Page rank
-    ranks = nx.pagerank(nx.from_numpy_array(similarity_matrix))
-
-    ranked_sentence = sorted(((ranks[i], s) for i, s in enumerate(article_text)), reverse=True)
-
-    for i in range(k):
-      result.append(" ".join(ranked_sentence[i][1]))
-
-    write_textfile("summarized_article.txt", result)
+        self.write_textfile(result)
 
 def main():
-    stop_words = stopwords.words('english')
-    if stop_words is None:
-        stop_words = []
+    parser = argparse.ArgumentParser(description='Article Summarizer')
 
-    generate_summary(file_path="sample_article.txt", k=2, stop_words=stop_words)
+    parser.add_argument('--k', dest="k", type=int, default=5, 
+                        help='set number of output sentences - default 5')
+
+    parser.add_argument('--i', dest="input_file", type=str, default="sample_article.txt",
+                        help='article text file to summarize - default sample_article.txt')
+
+    parser.add_argument('--o', dest="output_file", type=str, default="summarized_sample_article.txt",
+                        help='summarized article text file  - default summarized_sample_article.txt')
+
+    args = parser.parse_args()
+    summarizer = ExtractiveSummarizer(args)
+    summarizer.generate_summary()
 
 if __name__ == "__main__":
     main()
