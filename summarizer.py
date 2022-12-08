@@ -4,21 +4,24 @@ from nltk.corpus import stopwords
 from nltk.cluster.util import cosine_distance
 import networkx as nx
 import argparse
+from rouge import Rouge
 
 class ExtractiveSummarizer:
     def __init__(self, args):
         self.args = args
+        self.reference_text = ""
+        self.summarized_text = ""
 
         nltk.download("stopwords")
         self.stop_words = stopwords.words('english')
         if self.stop_words is None:
             self.stop_words = []
-        
 
-    def read_textfile(self):
-        f = open(self.args.input_file, "r")
+    def read_textfile(self, file):
+        f = open(file, "r")
         data = f.readlines()
         text_data = data[0].split(". ")
+        self.reference_text = data[0]
 
         article_text = []
 
@@ -77,8 +80,7 @@ class ExtractiveSummarizer:
 
     def generate_summary(self):
         result = []
-
-        article_text = self.read_textfile()
+        article_text = self.read_textfile(self.args.input_file)
 
         N = len(article_text)
         similarity_matrix = np.zeros((N, N))
@@ -100,10 +102,18 @@ class ExtractiveSummarizer:
             k = self.args.k
 
         for i in range(k):
-            result.append(" ".join(ranked_sentence[i][1]))
+            sentence = " ".join(ranked_sentence[i][1])
+            result.append(sentence)
+            self.summarized_text += sentence + ". "
 
         self.write_textfile(result)
 
+    # Using Rouge to Evaluate abstractive Summary
+    def evaluate(self):
+        r = Rouge()
+        scores = r.get_scores(self.summarized_text, self.reference_text)
+        print(scores)
+        
 def main():
     parser = argparse.ArgumentParser(description='Article Summarizer')
 
@@ -119,6 +129,7 @@ def main():
     args = parser.parse_args()
     summarizer = ExtractiveSummarizer(args)
     summarizer.generate_summary()
+    summarizer.evaluate()
 
 if __name__ == "__main__":
     main()
