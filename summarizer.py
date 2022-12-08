@@ -66,7 +66,14 @@ class ExtractiveSummarizer:
         similarity = 1 - cosine_distance(v1, v2)
         
         return similarity
+    
+    def calculate_k(self, N):
+        k = N // 3
 
+        if N % 3 != 0:
+            k += 1
+        
+        return k
 
     def generate_summary(self):
         result = []
@@ -87,7 +94,12 @@ class ExtractiveSummarizer:
 
         ranked_sentence = sorted(((ranks[i], s) for i, s in enumerate(article_text)), reverse=True)
 
-        for i in range(self.args.k):
+        if self.args.k < 1:
+            k = self.calculate_k(N)
+        else:
+            k = self.args.k
+
+        for i in range(k):
             result.append(" ".join(ranked_sentence[i][1]))
 
         self.write_textfile(result)
@@ -95,8 +107,8 @@ class ExtractiveSummarizer:
 def main():
     parser = argparse.ArgumentParser(description='Article Summarizer')
 
-    parser.add_argument('--k', dest="k", type=int, default=5, 
-                        help='set number of output sentences - default 5')
+    parser.add_argument('--k', dest="k", type=int, default=0, 
+                        help='set number of output sentences')
 
     parser.add_argument('--i', dest="input_file", type=str, default="sample_article.txt",
                         help='article text file to summarize - default sample_article.txt')
