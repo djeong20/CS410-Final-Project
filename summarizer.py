@@ -136,6 +136,9 @@ class ExtractiveSummarizer:
             self.summarized_text += sentence + ". "
 
         self.write_textfile(result)
+
+        if self.args.eval:
+            self.evaluate()
         
 def main():
     parser = argparse.ArgumentParser(description='Article Summarizer')
@@ -149,10 +152,12 @@ def main():
     parser.add_argument('--o', dest="output_file", type=str, default="summarized_sample_article.txt",
                         help='summarized article text file  - default summarized_sample_article.txt')
 
+    parser.add_argument('--eval', dest="eval", type=bool, default=False,
+                        help='evaluate summarization  - default False')
+
     args = parser.parse_args()
     summarizer = ExtractiveSummarizer(args)
     summarizer.generate_summary()
-    summarizer.evaluate()
 
 if __name__ == "__main__":
     main()
