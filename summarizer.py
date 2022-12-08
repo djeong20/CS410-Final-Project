@@ -96,7 +96,7 @@ class ExtractiveSummarizer:
 
         ranked_sentence = sorted(((ranks[i], s) for i, s in enumerate(article_text)), reverse=True)
 
-        if self.args.k < 1:
+        if self.args.k < 1 or self.args.k > N:
             k = self.calculate_k(N)
         else:
             k = self.args.k
