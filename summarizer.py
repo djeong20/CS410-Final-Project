@@ -12,11 +12,13 @@ class ExtractiveSummarizer:
         self.reference_text = ""
         self.summarized_text = ""
 
+        # Get stopwords such as "the", "me", "this", etc
         nltk.download("stopwords")
         self.stop_words = stopwords.words('english')
         if self.stop_words is None:
             self.stop_words = []
-
+    
+    # Read text file to summarize
     def read_textfile(self, file):
         f = open(file, "r")
         data = f.readlines()
@@ -33,6 +35,7 @@ class ExtractiveSummarizer:
         
         return article_text
 
+    # Write summarized article in text file
     def write_textfile(self, summarized):
         f = open(self.args.output_file, "w+")
 
@@ -41,6 +44,7 @@ class ExtractiveSummarizer:
         
         f.close()
 
+    # Get similarity score of two sentences
     def get_similarity(self, sentence_1, sentence_2):
         lower_sentence1, lower_sentence2 = [], []
 
@@ -70,6 +74,7 @@ class ExtractiveSummarizer:
         
         return similarity
     
+    # Get number of sentences by length of the article
     def calculate_k(self, N):
         k = N // 3
 
@@ -78,28 +83,52 @@ class ExtractiveSummarizer:
         
         return k
 
+    # Using Rouge to evaluate extractive summary
+    def evaluate(self):
+        r = Rouge()
+        scores = r.get_scores(self.summarized_text, self.reference_text)
+        for key in scores[0]:
+            print(key)
+            for k in scores[0][key]:
+                metric = ""
+                if k == 'r':
+                    metric = "Recall"
+                elif k == 'p':
+                    metric = "Precision"
+                else:
+                    metric = "F-score"
+                
+                print(metric, ":", scores[0][key][k])
+            print()
+
+    # Generate summarized article
     def generate_summary(self):
-        result = []
+        # Read text file
         article_text = self.read_textfile(self.args.input_file)
 
         N = len(article_text)
         similarity_matrix = np.zeros((N, N))
-    
+
+        # Create similarity matrix 
         for i in range(N):
             for j in range(i+1, N):
                 similarity = self.get_similarity(article_text[i], article_text[j])
 
                 similarity_matrix[i][j], similarity_matrix[j][i] = similarity, similarity
 
-        # Page rank
+        # Page rank using similarity matrix
         ranks = nx.pagerank(nx.from_numpy_array(similarity_matrix))
 
         ranked_sentence = sorted(((ranks[i], s) for i, s in enumerate(article_text)), reverse=True)
 
+        # Get K
         if self.args.k < 1 or self.args.k > N:
             k = self.calculate_k(N)
         else:
             k = self.args.k
+
+        # Select top k sentences
+        result = []
 
         for i in range(k):
             sentence = " ".join(ranked_sentence[i][1])
@@ -107,12 +136,6 @@ class ExtractiveSummarizer:
             self.summarized_text += sentence + ". "
 
         self.write_textfile(result)
-
-    # Using Rouge to Evaluate abstractive Summary
-    def evaluate(self):
-        r = Rouge()
-        scores = r.get_scores(self.summarized_text, self.reference_text)
-        print(scores)
         
 def main():
     parser = argparse.ArgumentParser(description='Article Summarizer')
