@@ -143,17 +143,17 @@ class ExtractiveSummarizer:
 def main():
     parser = argparse.ArgumentParser(description='Article Summarizer')
 
-    parser.add_argument('--k', dest="k", type=int, default=0, 
-                        help='set number of output sentences')
-
     parser.add_argument('--i', dest="input_file", type=str, default="sample_article.txt",
                         help='article text file to summarize - default sample_article.txt')
 
     parser.add_argument('--o', dest="output_file", type=str, default="summarized_sample_article.txt",
-                        help='summarized article text file  - default summarized_sample_article.txt')
+                        help='summarized article text file - default summarized_sample_article.txt')
+    
+    parser.add_argument('--k', dest="k", type=int, default=0, 
+                        help='number of top ranked sentences to output')
 
     parser.add_argument('--eval', dest="eval", type=bool, default=False,
-                        help='evaluate summarization  - default False')
+                        help='outputs summarization evaluatation  - default False')
 
     args = parser.parse_args()
     summarizer = ExtractiveSummarizer(args)
